@@ -1,0 +1,721 @@
+---
+title: "ANALYSIS OF HANDWRITTEN DOCUMENTS"
+author: "Samuel Adjei"
+date: "5/14/2021"
+header-includes:
+    - \usepackage{setspace}\doublespacing
+output: 
+ bookdown::html_document2:
+  css: [D:\R-STUDIO\RPubs_ Project\modify\font_styling.css,D:\R-STUDIO\RPubs_ Project\modify\caption_styling.css]
+  toc: true
+  toc_depth: 3
+geometry: left=1cm,right=2cm,top=2cm,bottom=2cm
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=F,message=F,echo = TRUE)
+```
+
+\newpage
+
+# Background
+
+The basis of the problem analyzed in this work is a current argument being debated by a team of researchers lead by Prof. Michael Caliguri. These researchers are exploring the relationship between kinematics of handwritten text and the ability of forensic document examiners to determine if two documents were written by the same writer. However, a side debate has risen among them thinking whether or not statisticians and machine learning experts can build a reasonably accurate classifier that can predict three things at once; (1) The writer of a short note, (2) Among 6 phrases ('Our London business is good', 'but Vienna and Berlin are quiet', 'Mr. Lloyd has gone to Switzerland', 'and I hope for good news', 'He will be there for a week', 'And then goes to Turin'), the phrase written by the writer (3) The type/style of writing used (Print or Script) based on the kinematic features recorded by MovAlyzeR. Hence, the objective of this project is to use the provided data to build a classifier that is reasonably accurate in predicting the three things. Two data sets (labeled and unlabeled) were provided. The labeled data has 30 columns with 103,311 rows and the unlabeled data has 150 rows with 27 columns.
+
+
+# Exploratory Analysis: 
+
+Summary analysis on the labeled data, table \@ref(tab:summary-chunk), shows the variable RelativeDurationofPrimary and RelativeSizeofPrimary appears insignificant in predicting the target variables. These variables were excluded from the data. A plot of correlation matrix on the numeric variables, fig \@ref(fig:corrplot1-chunk) shows there is strong correlation among most of the predictors. Hence, variables with correlation absolute value greater than 0.75 were removed from the data, figure \@ref(fig:corrplot2-chunk). Boxplots were used to explore the remaining predictors graphically in order to investigate if there exist any association with the three target variables, namely: “Group”, “Subject”, “Condition”. From figure \@ref(fig:plot-boxplot-chunk) and figure \@ref(fig:plot-boxplot2-chunk), there exist an association between Group and Subject, and majority of the predictors. However, predictors such as StraightnessError, RelativePenDownDuration, Slant, RelativeInitialSlant, Seqment, RelativeTimeToPeakVerticalVelocity and AveragePenPressure seems most likely to be useful in the prediction. From figure \@ref(fig:plot-hist1-chunk) and figure \@ref(fig:plot-hist2-chunk), the distribution of most of the predictors are not normal except that of Slant, RelativeInitialSlant, RelativeTimeToPeakVerticalVelocity, AveragePenPressure, VerticalSize and PeakVerticalVelocity which appears to be normally distributed.The final labeled data used for the analysis has 1440 rows and 16 predictors. 
+
+\newpage
+
+# Model Building Process:
+
+Since the problem is multiclass classification. I approached it with three supervised classifiers including Linear Discriminant Analysis (LDA), K-Nearest Neighbors (KNN), and Support Vector Machines (SVM). The project was attempted in two ways. First, the three classifiers were built to predict the three target variables at once. Differently, they were also built to predict each of the target variables. The predictors were modeled in three ways. In one approach, I scaled the predictors to have a standard deviation of one and used it for the knn model. In another approach, Principal component analysis (PCA) was modeled on the predictors to determine the components significant in predicting the target variables (This was also used for the knn model). In the third approach, the data was not scaled and used for the svm and lda models. The function pr. comp () which is one of the functions in R that performs PCA was used. pr. comp () centers the variables to have mean value of zero and scale=TRUE scales the variables to have standard deviation of one. A plot of the proportion of variance explained (PVE) by each of the principal components and cumulative proportion of the variance explained by the components (figure \@ref(fig:PVE-chunk)) shows the first 12 principal components explains approximately 99 percent of the variance in the data. Separately, the three models were built on the scaled data and the first 12 principal components and their accuracy rates were compared. All the three classifiers were fitted with leave-one-out cross validation (LOOCV) to partition the data into train and test data, the performance of the models were compared and the best one used for prediction on the unlabeled data.The svm () function in the e1071 library was used to fit the support vector classifiers with two differnt arguments namely: kernel = “linear” and kernel = “radial”. A cost argument was used to specify the cost of violation to the margin. 
+
+# Model Performance:
+Among all the classifiers built to predict the three target variables at once, LDA had the highest accuracy rate of 51%, and svm with the argument kernel = “radial” had the least accuracy rate (30.5%), figure \@ref(fig:Model-perf-all). "NB: The svm model built on the three combined target variables takes pretty long time to run, this was therefore not included in the analysis". The classifiers were also modeled on the individual target variables (Group, Subject and Condition). The computed accuracy rate from the classifiers modeled with Groups shows svm kernel = “radial” recorded the highest accuracy rate (91.8%). svm kernel = “radial” also recorded the highest accuracy rate (71%) among all the classifiers when modeled with Subject as well as when modeled with Condition (53%). The accuracy rate of the other classifiers on Condition were statistically, figure \@ref(fig:model-perf-chunk).
+
+\newpage
+
+# Short Notes on the Models Used: 
+Principal Component Analysis (PCA): Principal component analysis is an exploratory tool employed in data analysis to study and visualize the correlations that exist between variables in a dataset and to pre-process the data before supervised techniques are applied. It is a non-parametric method of extracting relevant information from dataset with many variables. In exploratory data analysis, PCA focuses on reducing the dimensionality of data while retaining the variations present in the data. It computes a new set of dimensions such that all the dimensions are orthogonal and ranked according to the variance of data along them. Thus, the variation in the original dataset explained by each of the newly computed dimensions also termed principal components varies, decreasing along each subsequent principal component. The first principal component has the largest proportion of variance explained (PVE) in the data. The PVE associated with each of the principal components is a positive quantity. Deciding on the number of principal components to visualiz, interpret or use in a given data is often relative as there is no well accepted objective way to go. However, one must choose the smallest number of principal components that explains sizable amount of the variation captured in the data. There are several functions in R that performs PCA, one of which include prcomp () function. By default, this function centers all the variables in the given dataset to have mean zero, and scale=TRUE which is an option in the function, scales the variables to have standard deviation of one.
+
+K-Nearest Neighbor Model (K-NN): K-Nearest Neighbor is a supervised learning algorithm used for classification and regression. When given dataset with known observations, KNN classifies the unlabeled observation in the given dataset according to the k number or the closest labeled observation. That is, KNN uses labeled observations in a given data to learn how to label other unlabeled observatioons. To assign a label to an unknown observation, KNN chooses the labeled observations nearest to the unknown observation and assign label according to the identity of those observations/neighbors. The output of a KNN classification represents a class membership. The value of k is a positive integer, typically small. In R, KNN is performed with the function knn () which is a part of the library, class. Compared to other model fitting functions which uses two-step approach (model fitting and prediction making from the model) to make predictions, the knn () function uses 
+a single command with four inputs to form predictions.
+
+Linear Discriminant Analysis (LDA): In Machine Learning and pattern classification applications, LDA is one of the many techniques that are used for data classification and dimensionality reduction. As dimensionality reduction technique, LDA transforms the features from higher dimensional space to lower dimensional space, thereby maximizing the ratio of the between-class variance to the within-class variance in a given dataset and guaranteeing maximum class separability. LDA classifier results from the assumption that observations within each class comes from a normal distribution with a class-specific mean vector and a common variance ${\sigma}^{2}$ 
+
+Support Vector Machine (SVM): SVM is a classification and regression prediction tool which makes use of machine learning algorithms to maximize predictive accuracy while automatically avoiding over-fit to the data. SVM uses line or hyperplanes as decision boundary to classify observations in a dataset by separating the data into different classes. A hyperplane in a q-dimensional space can be described as an q-1 dimensional subspace. For a given 2-dimension and 3-dimension space respectively, the hyperplane is a line and a plane dividing the dimensional space into halves. Mathematically, any hyperplane can be expressed as ${\beta_{0}} + {\beta_{1}x_1} + {\beta_{2}{x_2}} + \dots + {\beta_{𝑞}} \times {\beta_{𝑞}} = {0}$. When in 2-dimensions, the mathematical expression is given as ${\beta_{0}} + {\beta_{1}{𝑥_1}} + {\beta_{2}{x_2}} = {0}$. Applying hyperplane to a dataset splits the data into distinct classes and classifies any observation with unknow class according to the side of the hyperplane on which it lies. A given hyperplane is chosen on its correctness in separating most of the observations in the dataset into distinct classes. However, most often, some of the obsevations are misclassified. A solution to the misclassification problems that often araises is to aim at optimizing the margin between the distinct classes created by the hyperplane.
+
+
+```{r}
+#Libraries that were used in the analysis
+library(kableExtra)
+library(reshape)
+library(gridExtra)
+library(knitr)
+library(GGally)
+library(MASS)
+library(ggplot2)
+library(caret)
+library(class)
+library(e1071)
+library(tidyverse)
+```
+
+
+```{r}
+#setwd("C:/Users/Owner/OneDrive/R-STUDIO/STAT 602/FINAL PROJECT")
+labeled<-read.csv("C:/Users/Owner/OneDrive/R-STUDIO/STAT 602/FINAL PROJECT/labeled.csv",stringsAsFactors = F)[, -1]
+unlabeled<-read.csv("C:/Users/Owner/OneDrive/R-STUDIO/STAT 602/FINAL PROJECT/unlab.example.trial.csv",stringsAsFactors = F)[,-1]
+dplyr::glimpse(labeled)
+```
+
+
+```{r summary-chunk}
+labeled[,1:3]<-lapply(labeled[,1:3],as.factor)
+
+summary.stats <-round(as.data.frame(labeled[,-c(1:4)]%>% 
+      psych::describe() %>%
+          dplyr::select(n,mean, sd, median, min, max, range, se)),3)
+            kableExtra::kable(summary.stats, 
+      caption="Statistical distribution of the numeric variables in the labeled data",format ="pandoc")%>%
+kableExtra::kable_styling(latex_option=c("hold_position"), full_width = F)
+```
+
+
+```{r plot-hist1-chunk,fig.height=7,fig.width=8,fig.align="center",fig.cap="Histograms of Variables - Labeled Data"}
+grid.arrange(
+labeled%>%ggplot() + geom_histogram(aes(x=AveragePenPressure), fill="#A4AA83", col="black")+ labs(title = "AveragePenPressure"),
+labeled%>%ggplot() + geom_histogram(aes(x=Direction), fill="#A4AA83", col="black")+ labs(title = "Direction"),
+labeled%>%ggplot() + geom_histogram(aes(x=PeakVerticalVelocity), fill="#A4AA83", col="black")+ labs(title = "PeakVerticalVelocity"),
+labeled%>%ggplot() + geom_histogram(aes(x=RelativeInitialSlant), fill="#A4AA83", col="black")+ labs(title = "RelativeInitialSlant"),
+labeled%>%ggplot() + geom_histogram(aes(x=RelativePenDownDuration), fill="#A4AA83", col="black")+ labs(title = "RelativePenDownDuration"),
+labeled%>%ggplot() + geom_histogram(aes(x=RelativeTimeToPeakVerticalVelocity), fill="#A4AA83", col="black")+ labs(title = "RelativeTimeToPeakVerticalVelocity"),
+labeled%>%ggplot() + geom_histogram(aes(x=Segment), fill="#A4AA83", col="black")+ labs(title = "Segment"),
+labeled%>%ggplot() + geom_histogram(aes(x=Slant), fill="#A4AA83", col="black")+ labs(title = "Slant"),
+labeled%>%ggplot() + geom_histogram(aes(x=StraightnessError), fill="#A4AA83", col="black")+ labs(title = "StraightnessError"),
+labeled%>%ggplot() + geom_histogram(aes(x=VerticalSize), fill="#A4AA83", col="black")+ labs(title = "VerticalSize"),
+ncol=2)
+```
+
+
+```{r plot-hist2-chunk,fig.height=7,fig.width=8,fig.align="center",fig.cap="Histogram of Variables - Labeled Data"}
+grid.arrange(
+labeled%>%ggplot() + geom_histogram(aes(x=Duration), fill="#A4AA83", col="black")+ labs(title = "Duration"),
+labeled%>%ggplot() + geom_histogram(aes(x=PeakVerticalAcceleration), fill="#A4AA83", col="black")+ labs(title = "PeakVerticalAcceleration"),
+labeled%>%ggplot() + geom_histogram(aes(x=HorizontalSize), fill="#A4AA83", col="black")+ labs(title = "HorizontalSize"),
+labeled%>%ggplot() + geom_histogram(aes(x=LoopSurface), fill="#A4AA83", col="black")+ labs(title = "LoopSurface"),
+labeled%>%ggplot() + geom_histogram(aes(x=AbsoluteSize), fill="#A4AA83", col="black")+ labs(title = "AbsoluteSize"),
+labeled%>%ggplot() + geom_histogram(aes(x=AverageAbsoluteVelocity), fill="#A4AA83", col="black")+ labs(title = "AverageAbsoluteVelocity"),
+labeled%>%ggplot() + geom_histogram(aes(x=Roadlength), fill="#A4AA83", col="black")+ labs(title = "Roadlength"),
+labeled%>%ggplot() + geom_histogram(aes(x=AbsoluteyJerk), fill="#A4AA83", col="black")+ labs(title = "AbsoluteyJerk"),
+labeled%>%ggplot() + geom_histogram(aes(x=NormalizedyJerk), fill="#A4AA83", col="black")+ labs(title = "NormalizedyJerk"),
+labeled%>%ggplot() + geom_histogram(aes(x=AverageNormalizedyJerkPerTrial), fill="#A4AA83", col="black")+ labs(title = "AverageNormalizedyJerkPerTrial"),
+ncol=2)
+```
+
+
+```{r plot-hist3-chunk,fig.height=7,fig.width=8,fig.align="center",fig.cap="Histogram of Variables - Labeled Data"}
+grid.arrange(
+labeled%>%ggplot() + geom_histogram(aes(x=AbsoluteJerk), fill="#A4AA83", col="black")+ labs(title = "AbsoluteJerk"),
+labeled%>%ggplot() + geom_histogram(aes(x=NormalizedJerk), fill="#A4AA83", col="black")+ labs(title = "NormalizedJerk"),
+labeled%>%ggplot() + geom_histogram(aes(x=AverageNormalizedJerkPerTrial), fill="#A4AA83", col="black")+ labs(title = "AverageNormalizedJerkPerTrial"),
+labeled%>%ggplot() + geom_histogram(aes(x=NumberOfPeakAccelerationPoints), fill="#A4AA83", col="black")+ labs(title = "NumberOfPeakAccelerationPoints"),
+labeled%>%ggplot() + geom_histogram(aes(x=Trial), fill="#A4AA83", col="black")+ labs(title = "Trial"),
+labeled%>%ggplot() + geom_histogram(aes(x=AverageAbsoluteVelocity), fill="#A4AA83", col="black")+ labs(title = "AverageAbsoluteVelocity"),
+ncol=2)
+```
+
+
+```{r plot-boxplot-chunk,fig.height=5,fig.width=10,fig.align="center",fig.cap="Boxplot of distribution of Group among some significant Variables"}
+labeled%>%
+    select(AveragePenPressure,Direction,PeakVerticalVelocity,RelativeInitialSlant,RelativePenDownDuration,
+           RelativeTimeToPeakVerticalVelocity,Segment,Slant,StraightnessError,VerticalSize,Group) %>%
+  gather(key   = "key", 
+         value = "value",-Group) %>%
+  
+  #Distribution of the target variable (0=Good,1=Bad) among the numeric variables
+  #Since no customer is indebted or has any standing delinquent amount, this variable together with AccountsDQ were removed from the data
+  ggplot(aes(y = value)) +
+  geom_boxplot(aes(fill = Group),
+               alpha  = .6,
+               fatten = .7) + 
+  labs(x = "",
+       y = "",
+       title = "Boxplots of Group vs Significant Variables") +
+  scale_fill_manual(
+    values = c("turquoise2","turquoise4"),
+    name   = "Group",
+    labels = c("CUR", "PRI")) +
+  theme_bw() +
+  facet_wrap(~ key, 
+             scales = "free", 
+             ncol   = 5)
+```
+
+
+```{r plot-boxplot2-chunk,fig.height=6,fig.width=10,fig.align="center",fig.cap="Boxplot of distribution of Condition among some significant Variables"}
+labeled%>%
+    select(AveragePenPressure,Direction,PeakVerticalVelocity,RelativeInitialSlant,RelativePenDownDuration,
+           RelativeTimeToPeakVerticalVelocity,Segment,Slant,StraightnessError,VerticalSize,Condition) %>%
+  gather(key   = "key", 
+         value = "value",-Condition) %>%
+  
+  #Distribution of the target variable (0=Good,1=Bad) among the numeric variables
+  #Since no customer is indebted or has any standing delinquent amount, this variable together with AccountsDQ were removed from the data
+  ggplot(aes(y = value)) +
+  geom_boxplot(aes(fill = Condition),
+               alpha  = .6,
+               fatten = .7) + 
+  labs(x = "",
+       y = "",
+       title ="Boxplots of Condition vs Significant Variables") +
+  scale_fill_manual(
+    values = c("turquoise","turquoise1","turquoise2","turquoise3","turquoise4","skyblue2"),
+    name   = "Condition",
+    labels = c("L1", "L2","L3","L4","L5","L6")) +
+  theme_bw() +
+  facet_wrap(~ key, 
+             scales = "free", 
+             ncol   = 5)
+
+```
+
+
+
+```{r corrplot1-chunk,fig.height=7,fig.width=10,fig.align="center",fig.cap="Correlation matrix of all the variables"}
+df<-labeled[,-c(1:4,18:19)]
+corr<-round(cor(df),1)
+ggcorrplot::ggcorrplot(corr, hc.order = TRUE, outline.col = "white")
+```
+
+
+```{r}
+lab<-labeled[,-(18:19)]#Creating a variable "Group" to contain the names of the known species
+num_vars<-lab[,!names(lab) %in% c('Group','Subject','Condition','Trial')]
+Matrix<- cor(num_vars)  #Computing correlation matrix on the input variables
+Matrix[upper.tri(Matrix)]<-0
+diag(Matrix)<-0        #Setting the upper triangle and perfectly correlated variables to 0
+Non_corr_vars<-num_vars[,!apply(Matrix,2,function(x) any(x > abs(0.75)))]#Removing any input variable with correlation absolute value of 0.8 or above
+```
+
+
+```{r corrplot2-chunk,fig.height=7,fig.width=10,fig.align="center",fig.cap="Correlation plot of less correlated variables"}
+corr<-round(cor(Non_corr_vars),1)
+ggcorrplot::ggcorrplot(corr, hc.order = TRUE, outline.col = "white")
+```
+
+
+```{r}
+#The code in this chunk is replicated from what you took us through in the class.
+labeled <- labeled %>%
+  select(Group,Subject,Condition,Trial,Slant,HorizontalSize,RelativeInitialSlant,
+         NormalizedJerk,NumberOfPeakAccelerationPoints, StraightnessError, Segment,
+         PeakVerticalAcceleration,AveragePenPressure,LoopSurface,RelativeTimeToPeakVerticalVelocity,
+         AbsoluteJerk,AbsoluteyJerk,Roadlength,AverageAbsoluteVelocity) 
+```
+
+
+
+```{r}
+## Model performance function
+perf.measure<-function(Preds, Resp){
+  Preds<-as.character(Preds)
+  Resp<-as.character(Resp)
+  CV.tab.dat <- cbind(Preds, Resp)
+  conf.tab <- xtabs(~Preds+Resp, CV.tab.dat)
+  #accuracy rate
+  accuracy.rate <- round(mean(Preds==Resp),2)
+  return(list(accuracy.rate = accuracy.rate,conf.tab <- conf.tab))
+}
+```
+
+
+```{r}
+
+labeled.means=NULL
+Col.means=NULL
+response=apply(labeled[,1:4], 1, paste, collapse = ":") 
+#Combining the first four variables in the dataset which include the three target variables, the data was subseting using the column means of the variables.
+uniq=unique(response)
+for (i in uniq){
+labeled.nrow=labeled[i==response, ]
+colmean.nrow=colMeans(labeled.nrow[,-(1:4)])
+Col.means=rbind(Col.means, labeled.nrow[1,(1:3)]) 
+labeled.means=rbind(labeled.means, colmean.nrow)
+}
+dim(labeled.means)
+```
+
+
+```{r}
+collapsed<-data.frame(target=apply(Col.means[,1:3], 1, paste, collapse = ":"),labeled.means)
+predictors<-as.data.frame(collapsed[,-1])
+predictors$target<-as.factor(collapsed$target)
+
+
+pr.out=prcomp(collapsed[,-1],scale.=TRUE)
+df_pca<-as.data.frame(pr.out$x[,1:12])
+df_pca$target<- collapsed$target
+
+pr.var=pr.out$sdev^2
+pve=pr.var/sum(pr.var)
+cat("\nVariability Explained:Group:Subject:Condition(Principal Components):",(cumsum(pr.var/sum(pr.var))[12])*100)
+```
+
+
+
+```{r PVE-chunk,fig.width=10,fig.height=5,fig.align="center",fig.cap="Proportion of Variance Explained"}
+if (require(gridExtra)){
+Plot1<-ggplot(data = c(),aes(1:15,pve)) + geom_line() + geom_point() + labs(x="Principal Components",
+                  y = "PVE ", title ="Proportion of Variance Explained") + ylim(0.00,0.1)+ theme_bw()
+Plot2<-ggplot(data = c(),aes(1:15,cumsum(pve))) + geom_line() + geom_point() + labs(x="Principal Components",
+      y = "Cumulative PVE ", title ="Cumulative Proportion Variance Explained") + ylim(0.00,1.0)+ theme_bw()
+grid.arrange(Plot1,Plot2,ncol = 2)
+}
+```
+
+
+
+```{r}
+#Fitting LDA Model and predicting with CV (leave-one-out cross validation)
+lda_model<-lda(target~., data = predictors, CV = TRUE)
+
+#LDA CV Model Performance on Predicting Group:Subject:Condition at once
+lda_perf<-perf.measure(Preds=lda_model$class, Resp=predictors$target)
+```
+
+
+```{r}
+set.seed(12345)
+scal_predictors<-as.data.frame(scale(predictors[,-16]))
+scal_predictors$target<-predictors$target
+
+test_scal<- NULL
+for (k in 1:100) {
+model_scal<- knn.cv(scal_predictors[,1:15],cl=scal_predictors$target, k)
+test_scal[k] <- mean(model_scal==scal_predictors$target)
+}
+k_test_scal <- which(test_scal==max(test_scal)) # my result is 15/17
+knn_model_scal<- knn.cv(scal_predictors[,1:15],
+                     cl=scal_predictors$target, k=k_test_scal[1])
+
+test_pca<- NULL
+for (k in 1:100) {
+model_pca<- knn.cv(df_pca[,1:12],cl=df_pca$target, k)
+test_pca[k] <- mean(model_pca==df_pca$target)
+}
+k_test_pca <- which(test_pca==max(test_pca)) # my result is 15/17
+knn_model_pca<- knn.cv(df_pca[,1:12],  
+                       cl=df_pca$target, k=k_test_pca[1])
+```
+
+
+```{r optimal-chunk,fig.align="center",fig.cap='optimal k value choices plots for knn model'}
+#knn optimual parameters plot
+par(mfrow = c(2,1))
+plot(test_scal, ylim=c(0.8,0.9), xlab = 'k value', ylab = 'LOOCV accuracy rate', 
+     main = 'knn model with all variables')
+abline(v=k_test_scal[1], col = 'red')
+legend(x=k_test_scal[1], y=0.85, legend = paste('optimal k=',k_test_scal[1]), bty='n')
+
+
+plot(k_test_pca, ylim=c(0.8,0.9), xlab = 'k value', ylab = 'LOOCV accuracy rate', 
+     main = 'knn model with first three pca variables')
+abline(v=k_test_pca[1], col = 'red')
+legend(x=k_test_pca[1], y=0.88, legend = paste('optimal k=',k_test_pca[1]), bty='n')
+```
+
+
+```{r}
+#KNN CV Model Performance on Predicting Group:Subject:Condition at once
+knn_scal_perf<-perf.measure(Preds = knn_model_scal, Resp= scal_predictors$target)
+knn_pca_perf<-perf.measure(Preds = knn_model_pca, Resp=scal_predictors$target)
+```
+
+
+
+```{r}
+#Data frame with each of the individual target variable
+df<-predictors %>%
+  select(-target) 
+
+df_all_target<-data.frame(df,
+                     Col.means[,1:3])
+
+#The labeled data with Group as target variable
+df_grp<-df_all_target %>%
+  select(-c(Subject,Condition))
+
+#The labeled data with Subject as target variable 
+df_sub<-df_all_target %>%
+  select(-c(Group,Condition))
+
+#The labeled data with Condition as target variable
+df_cond<-df_all_target %>%
+  select(-c(Group,Subject))
+
+
+#Fitting LDA Model and predicting with CV (leave-one-out cross validation) on the scaled data
+lda_model.grp<-lda(Group ~., data = df_grp, CV = TRUE)
+lda_model.sub<-lda(Subject ~., data = df_sub,CV = TRUE)
+lda_model.cond<-lda(Condition ~ ., data = df_cond,CV = TRUE)
+
+
+#LDA CV performance on the models
+tab_lda_model.grp<-table(lda_model.grp$class,df_grp$Group)
+lda_grp_perf<-sum(diag(tab_lda_model.grp))/sum(tab_lda_model.grp)
+lda_sub.perf<-perf.measure(Preds=lda_model.sub$class, Resp=df_sub$Subject)
+lda_cond.perf<-perf.measure(Preds=lda_model.cond$class, Resp=df_cond$Condition)
+```
+
+
+```{r}
+#The scaled data with the individual target variable
+df<-scal_predictors %>%
+  select(-target) 
+
+df_all_target<-data.frame(df,
+                     Col.means[,1:3])
+
+#The labeled data with Group as target variable
+df_grp<-df_all_target %>%
+  select(-c(Subject,Condition))
+
+#The labeled data with Subject as target variable 
+df_sub<-df_all_target %>%
+  select(-c(Group,Condition))
+
+#The labeled data with Condition as target variable
+df_cond<-df_all_target %>%
+  select(-c(Group,Subject))
+
+
+#Fitting KNN Model and predicting with CV (leave-one-out cross validation) on the scaled data
+set.seed(12345)
+test_grp<- NULL
+for (k in 1:100) {
+model_grp<- knn.cv(df_grp[1:15],cl=df_grp$Group, k)
+test_grp[k] <- mean(model_grp==df_grp$Group)
+}
+k_test_grp<-which(test_grp==max(test_grp)) # my result is 15/17
+knn_model_grp<- knn.cv(df_grp[,1:15],
+                     cl=df_grp$Group, k=k_test_grp[1])
+
+test_sub<- NULL
+for (k in 1:100) {
+model_sub<- knn.cv(df_sub[,1:15],cl=df_sub$Subject, k)
+test_sub[k] <- mean(model_sub==df_sub$Subject)
+}
+k_test_sub<-which(test_sub==max(test_sub)) # my result is 15/17
+knn_model_sub<- knn.cv(df_sub[,1:15],
+                     cl=df_sub$Subject, k=k_test_sub[1])
+
+test_cond<- NULL
+for (k in 1:100) {
+model_cond<- knn.cv(df_cond[,1:15],cl=df_cond$Condition, k)
+test_cond[k] <- mean(model_cond==df_cond$Condition)
+}
+k_test_cond<-which(test_cond==max(test_cond)) # my result is 15/17
+knn_model_cond<- knn.cv(df_cond[,1:15],
+                     cl=df_cond$Condition, k=k_test_cond[1])
+```
+
+
+```{r}
+#Fitting KNN model and predicting with CV on the Principal Component scaled data
+
+#Principal component scaled data with group as target
+knn_pca<-as.data.frame(pr.out$x[,1:12])
+knn_pca.grp<-data.frame(knn_pca,Col.means[,1])
+names(knn_pca.grp)[13]<-"Group"
+
+#Principal component scaled data with Subject as target
+knn_pca.sub<-data.frame(knn_pca,Col.means[,2])
+names(knn_pca.sub)[13]<-"Subject"
+
+#Principal component scaled data with Condition as target
+knn_pca.cond<-data.frame(knn_pca,Col.means[,3])
+names(knn_pca.cond)[13]<-"Condition"
+
+
+test_pca.grp<- NULL
+for (k in 1:100) {
+model_pca.grp<- knn.cv(knn_pca.grp[,1:12],cl=knn_pca.grp$Group, k)
+test_pca.grp[k] <- mean(model_pca.grp==knn_pca.grp$Group)
+}
+k_test_pca.grp<- which(test_pca.grp==max(test_pca.grp)) # my result is 15/17
+knn_model_pca.grp<- knn.cv(knn_pca.grp[,1:12],  
+                       cl=knn_pca.grp$Group, k=k_test_pca.grp[1])
+
+test_pca.sub<- NULL
+for (k in 1:100) {
+model_pca.sub<- knn.cv(knn_pca.sub[,1:12],cl=knn_pca.sub$Subject, k)
+test_pca.sub[k] <- mean(model_pca.sub==knn_pca.sub$Subject)
+}
+k_test_pca.sub<- which(test_pca.sub==max(test_pca.sub)) # my result is 15/17
+knn_model_pca.sub<- knn.cv(knn_pca.sub[,1:12],  
+                       cl=knn_pca.sub$Subject, k=k_test_pca.grp[1])
+
+test_pca.cond<- NULL
+for (k in 1:100) {
+model_pca.cond<- knn.cv(knn_pca.cond[,1:12],cl=knn_pca.cond$Condition, k)
+test_pca.cond[k] <- mean(model_pca.cond==knn_pca.cond$Condition)
+}
+k_test_pca.cond <- which(test_pca.cond==max(test_pca.cond)) # my result is 15/17
+knn_model_pca.cond<- knn.cv(knn_pca.cond[,1:12],  
+                       cl=knn_pca.cond$Condition, k=k_test_pca.cond[1])
+```
+
+
+
+```{r}
+##KNN CV Model performance in predicting Group, Subject and Condition separately
+tab_knn_model.grp<-table(knn_model_grp,df_grp$Group)
+knn_grp_perf<-sum(diag(tab_knn_model.grp))/sum(tab_knn_model.grp)
+knn_sub_perf<- perf.measure(Preds = knn_model_sub, Resp=df_sub$Subject)
+knn_cond_perf<- perf.measure(Preds = knn_model_cond, Resp=df_cond$Condition)
+
+
+#LDA CV performance on the PCA models
+tab_knn_model_pca.grp<-table(knn_model_pca.grp,knn_pca.grp$Group)
+knn_pca_grp.perf<-sum(diag(tab_knn_model_pca.grp))/sum(tab_knn_model_pca.grp)
+knn_pca_sub.perf <- perf.measure(Preds = knn_model_pca.sub, Resp=knn_pca.sub$Subject)
+knn_pca_cond.perf<- perf.measure(Preds = knn_model_pca.cond, Resp=knn_pca.cond$Condition)
+```
+
+
+```{r}
+set.seed(702)
+#svm_radial with Group as target variable
+svm_radial_grp<-as.factor(NULL)
+levels(svm_radial_grp)<-levels(df_grp$Group)
+for(i in 1:1440){
+  trainX <- df_grp[-i,]
+  testY <- df_grp[i, ]
+  Radial_model.grp<-svm(Group~., data = trainX, kernel = 'radial',cost=10)
+  svm_radial_grp[i] <- predict(Radial_model.grp, newdata = testY)
+}
+
+
+#svm_polynomial with Group as target variable
+svm_linear_grp<-as.factor(NULL)
+levels(svm_linear_grp)<-levels(df_grp$Group)
+for(i in 1:1440){
+  trainX <- df_grp[-i,]
+  testY <- df_grp[i,]
+  linear_model<- svm(Group ~., data = trainX, scale = FALSE, kernel = 'linear',cost=10)
+  svm_linear_grp[i] <- predict(linear_model, newdata = testY)
+}
+
+
+
+#svm_radial with Subject as target variable
+svm_radial_sub<-as.factor(NULL)
+levels(svm_radial_sub)<-levels(df_sub$Subject)
+for(i in 1:1440){
+  trainX <- df_sub[-i,]
+  testY <- df_sub[i, ]
+  Radial_model.subj<-svm(Subject~., data = trainX, kernel = 'radial',cost=10)
+  svm_radial_sub[i] <- predict(Radial_model.subj, newdata = testY)
+}
+
+#svm_polynomial with Subject as target variable
+svm_linear_sub<-as.factor(NULL)
+levels(svm_linear_sub)<-levels(df_sub$Subject)
+for(i in 1:1440){
+  trainX <- df_sub[-i,]
+  testY <- df_sub[i,]
+  linear_model<- svm(Subject~., data = trainX, scale = FALSE, kernel = 'linear',cost=10)
+  svm_linear_sub[i] <- predict(linear_model, newdata = testY)
+}
+
+
+#svm_radial with Condition as target variable
+svm_radial_cond<-as.factor(NULL)
+levels(svm_radial_cond)<-levels(df_cond$Condition)
+for(i in 1:1440){
+  trainX <- df_cond[-i,]
+  testY <- df_cond[i, ]
+  Radial_model<-svm(Condition~., data = trainX, kernel = 'radial',cost=10)
+  svm_radial_cond[i] <- predict(Radial_model, newdata = testY)
+}
+
+#svm_polynomial with Condition as target variable
+svm_linear_cond<-as.factor(NULL)
+levels(svm_linear_cond)<-levels(df_cond$Condition)
+for(i in 1:1440){
+  trainX <- df_cond[-i,]
+  testY <- df_cond[i,]
+  linear_model<- svm(Condition~., data = trainX, scale = FALSE, kernel = 'linear',cost=10,degree=3)
+  svm_linear_cond[i] <- predict(linear_model, newdata = testY)
+}
+```
+
+
+```{r}
+tab_svm_radial.grp<-table(svm_radial_grp,df_grp$Group)
+svm_radial_grp.perf<-sum(diag(tab_svm_radial.grp))/sum(tab_svm_radial.grp)
+
+tab_svm_linear.grp<-table(svm_linear_grp,df_grp$Group)
+svm.linear_grp.perf<-sum(diag(tab_svm_linear.grp))/sum(tab_svm_linear.grp)
+
+
+
+svm_radial_sub.perf<-perf.measure(Preds=svm_radial_sub,Resp=df_sub$Subject)
+svm_linear_sub.perf<- perf.measure(Preds=svm_linear_sub,Resp=df_sub$Subject)
+
+
+svm_radial_cond.perf<-perf.measure(Preds=svm_radial_cond,Resp=df_cond$Condition)
+svm_linear_cond.perf<-perf.measure(Preds=svm_linear_cond,Resp=df_cond$Condition)
+```
+
+
+
+
+```{r}
+## construct performance table and plot
+
+COL.NAME <- c('Model')
+ROW.NAME <- c('lda_all','knn_scal.all','knn_pca.all')
+
+accuracy.rate_all <- as.data.frame(cbind(c(lda_perf$accuracy.rate,
+                                    knn_scal_perf$accuracy.rate,knn_pca_perf$accuracy.rate)
+                                     ))
+colnames(accuracy.rate_all) <- COL.NAME
+rownames(accuracy.rate_all) <- ROW.NAME
+
+row.name<-c('lda','knn_scal','knn_PCA','svm_radial','svm_linear')
+column.name<-c('Group','Subject','Condition')
+
+accuracy.rate<-as.data.frame(rbind(c(lda_grp_perf,lda_sub.perf$accuracy.rate,lda_cond.perf$accuracy.rate),
+                                     c(knn_grp_perf,knn_sub_perf$accuracy.rate,knn_cond_perf$accuracy.rate),
+                                    c( knn_pca_grp.perf,knn_pca_sub.perf$accuracy.rate,knn_pca_cond.perf$accuracy.rate),
+                                     c(svm_radial_grp.perf,svm_radial_sub.perf$accuracy.rate,svm_radial_cond.perf$accuracy.rate),
+                                     c(svm.linear_grp.perf,svm_linear_sub.perf$accuracy.rate,svm_linear_cond.perf$accuracy.rate)
+                             ))
+                              
+colnames(accuracy.rate)<-column.name
+row.names(accuracy.rate)<-row.name
+```
+
+
+
+```{r}
+#Table of Performance Measures
+kable(accuracy.rate_all, caption = 'Average LOOCV Accuracy Rate across GROUP:SUBJECT:CONDITION', format = "pandoc")%>%kable_styling(latex_option=c("hold_position"), full_width = F)
+kable(accuracy.rate, caption = 'Average LOOCV Accuracy Rate across "GROUP","SUBJECT","CONDITION"', format = "pandoc")%>%kable_styling(latex_option=c("hold_position"), full_width = F)
+```
+
+
+
+```{r Model-perf-all,fig.height=5, fig.width=7,fig.align="center",fig.cap="Model Performance on Group:Subject:Condition"}
+#Graph of model Performance measures
+accuracy.rate_all$numb.var <- as.factor(c('lda_all', 'knn_scal.all','knn_pca.all'))
+mdata <- melt(accuracy.rate_all, id="numb.var")%>%dplyr::rename(Model="variable")
+
+
+ggplot(mdata, aes(x=numb.var, y=value, group=Model)) +
+  geom_line(aes(color=Model)) +
+  geom_point(aes(color=Model)) +
+  coord_cartesian(xlim = NULL, ylim = c(0.3,0.6), 
+                 expand = TRUE, default = FALSE,clip = "on") + 
+ theme(legend.position="top") + labs(title = "Accuracy rate") + 
+  xlab("Variable Selection") + ylab("LOOCV Accuracy rate") + 
+  guides(fill=guide_legend(title="Model"))
+```
+
+
+```{r model-perf-chunk,fig.height=5, fig.width=10,fig.align="center",fig.cap="Model Performance"}
+accuracy.rate$numb.var<-as.factor(c('lda','knn_Scal','knn_PCA',
+                                    'svm_radial','svm_linear'))
+melt(accuracy.rate, id="numb.var")%>%dplyr::rename(Target_Variable="variable") %>%
+
+ggplot(aes(x=numb.var, y=value, group=Target_Variable)) +
+  geom_line(aes(color=Target_Variable)) +
+  geom_point(aes(color=Target_Variable)) +
+  coord_cartesian(xlim = NULL, ylim = c(0.15,0.95), 
+                 expand = TRUE, default = FALSE,clip = "on") + 
+ theme(legend.position="top") + labs(title = "Accuracy rate") + 
+  xlab("Models") + ylab("LOOCV Accuracy rate") + 
+  guides(fill=guide_legend(title="Target_Variable"))
+```
+
+
+
+```{r}
+set.seed(702)
+unlabeled<-unlabeled %>% #Selecting the same variables used in the model building process from the unlabled dataset for the prediction and computing their column means
+  select(Trial,Slant,HorizontalSize,RelativeInitialSlant,
+         NormalizedJerk,NumberOfPeakAccelerationPoints, StraightnessError, Segment,
+         PeakVerticalAcceleration,AveragePenPressure,LoopSurface,RelativeTimeToPeakVerticalVelocity,
+         AbsoluteJerk,AbsoluteyJerk,Roadlength,AverageAbsoluteVelocity) 
+
+unlabeled.means=NULL
+uni.unlab=unique(unlabeled$Trial) 
+for (i in uni.unlab){
+unlabeled.nrow=unlabeled[i==unlabeled$Trial, ]
+unlab.Col.means=colMeans(unlabeled.nrow[,-1])
+unlabeled.means=rbind(unlabeled.means, unlab.Col.means)
+}
+dim(unlabeled.means)
+```
+
+
+```{r}
+unlabeled.df<-data.frame(unlabeled.means)
+
+#prediction of the unlabeled data with the best performed model when the three 
+#combined target variables were used in the model building process
+lda_model<-lda(target~., data = predictors, CV = FALSE)
+
+pred_lda<-predict(lda_model, newdata=unlabeled.df)
+pred_lda$class
+```
+
+
+
+```{r}
+#prediction of the unlabeled data with the best performed model when Group was used in the model building process
+pred_svm.kernel_grp<-predict(Radial_model.grp,newdata=unlabeled.df)
+pred_svm.kernel_grp
+```
+
+
+```{r}
+#prediction of the unlabeled data with the best performed model when Group was used in the model building process
+pred_svm_kernel_subj<-predict(Radial_model.subj,newdata=unlabeled.df)
+pred_svm_kernel_subj
+```
+
+
+```{r}
+#prediction of the unlabeled data with the best performed model when Group was used in the model building process
+pred_svm_kernel_cond<-predict(Radial_model,newdata = unlabeled.df)
+pred_svm_kernel_cond
+```
+
+
+# References:
+
+Gareth James, Daniela Witten, Trevor Hastie & Robert Tibshirani. (2013). An Introduction to Statistical Learning with Application in R. 10.1007/978-1-4614-7138-7 
+
+Awad, Mariette & Khanna, Rahul. (2015). Support Vector Machines for Classification. 10.1007/978-1-4302-5990-9_3. 
+
+Jon Shlens. (2003). A TUTORIAL ON PRINCIPAL COMPONENT ANALYSIS: Derivation, Discussion and Singular Value Decomposition 
+
+Oliver Sutton. (2012).Introduction to k Nearest Neighbour Classification andCondensed Nearest Neighbour Data Reduction 
+
+Vikramaditya Jakkula., “Tutorial on Support Vector Machine (SVM)”. School of EECS, Washington State University, Pullman 99164. 
+
+Burges C., “A tutorial on support vector machines for pattern recognition”, In “Data Mining and Knowledge Discovery”.Kluwer Academic Publishers, Boston, 1998, (Volume 2). 
+
+https://pythonprogramminglanguage.com/how-is-the-k-nearest-neighbor-algorithm-different-from-k-means-clustering/
+
+https://medium.com/@aptrishu/understanding-principle-component-analysis-e32be0253ef0
+
+https://www.dezyre.com/data-science-in-python-tutorial/principal-component-analysis-tutorial
+
+https://www.researchgate.net/publication/240093048_Linear_Discriminant_Analysis-A_Brief_Tutorial http://thatdatatho.com/2018/02/19/assumption-checking-lda-vs-qda-r-tutorial-2
